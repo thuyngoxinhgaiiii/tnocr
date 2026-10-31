@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+<title>TNOCR</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Bố cục: một cột hẹp như một tờ giấy; con dấu 识 là điểm nhấn duy nhất, phần còn lại giữ yên tĩnh. */
+:root {
+  --bg: #FFFFFF;
+  --paper: #FFF8F1;
+  --ink: #3A2E28;
+  --muted: #85766C;
+  --line: #EADCCF;
+  --accent: #E07A2F;
+  --accent-ink: #B8561A;
+  --accent-soft: #FCE6D2;
+  --sage: #E2EEDF;
+  --sage-ink: #3F6B42;
+  --sky: #E0ECF6;
+  --sky-ink: #2F5C86;
+  --warn: #FBEBC8;
+  --warn-ink: #8A5A00;
+  --bad: #F8DCD6;
+  --bad-ink: #9A2F1F;
+  --font-vi: "Times New Roman", "Liberation Serif", "Noto Serif", Times, serif;
+  --font-zh: "KaiTi", "Kaiti SC", "STKaiti", "SimSun", "Songti SC", "Noto Serif CJK SC", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1F1A17; --paper: #2A231E; --ink: #F0E6DC; --muted: #B5A598; --line: #44382F;
+    --accent: #F09A55; --accent-ink: #F6B27C; --accent-soft: #4A3220;
+    --sage: #2B3A2B; --sage-ink: #A9D3AC; --sky: #263646; --sky-ink: #A9CBEA;
+    --warn: #4A3C16; --warn-ink: #F0CF86; --bad: #4D2923; --bad-ink: #F2B0A5;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1F1A17; --paper: #2A231E; --ink: #F0E6DC; --muted: #B5A598; --line: #44382F;
+  --accent: #F09A55; --accent-ink: #F6B27C; --accent-soft: #4A3220;
+  --sage: #2B3A2B; --sage-ink: #A9D3AC; --sky: #263646; --sky-ink: #A9CBEA;
+  --warn: #4A3C16; --warn-ink: #F0CF86; --bad: #4D2923; --bad-ink: #F2B0A5;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-vi); font-size: 17px; line-height: 1.55;
+  padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.zh { font-family: var(--font-zh); }
+main { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+header { display: flex; align-items: center; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.seal {
+  flex: none; width: 58px; height: 58px; border-radius: 6px; background: var(--accent); color: #fff;
+  display: grid; place-items: center; font-family: var(--font-zh); font-size: 38px; line-height: 1;
+  transform: rotate(-3deg); box-shadow: 0 1px 0 rgba(0,0,0,.08);
+}
+header h1 { margin: 0; font-size: 30px; letter-spacing: .12em; font-weight: 700; line-height: 1.1; }
+header p { margin: 4px 0 0; color: var(--muted); font-size: 15px; text-wrap: balance; }
+.privacy { background: var(--sage); color: var(--sage-ink); border-radius: 8px; padding: 10px 14px; font-size: 15px; }
+h2 { margin: 0 0 10px; font-size: 18px; font-weight: 700; letter-spacing: .02em; }
+.drop {
+  border: 1.5px dashed var(--accent); background: var(--paper); border-radius: 10px;
+  padding: 28px 18px; text-align: center; cursor: pointer; display: block; transition: background .15s;
+}
+.drop:hover, .drop.over { background: var(--accent-soft); }
+.drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop strong { display: block; font-size: 19px; }
+.drop span { color: var(--muted); font-size: 15px; }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+.opts > div { min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.chip label {
+  display: inline-block; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--bg); cursor: pointer; font-size: 16px; user-select: none;
+}
+.chip input:checked + label { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.chip input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.check { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; font-size: 16px; }
+.check input { margin-top: 5px; accent-color: var(--accent); }
+.check small { display: block; color: var(--muted); font-size: 14px; }
+select { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); max-width: 100%; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+button {
+  font: inherit; cursor: pointer; border-radius: 6px; padding: 9px 18px; border: 1px solid var(--accent);
+  background: var(--accent); color: #fff; font-weight: 700;
+}
+button.ghost { background: transparent; color: var(--accent-ink); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.file { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--bg); min-width: 0; }
+.file-top { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; justify-content: space-between; }
+.fname { font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+.tag { font-size: 14px; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.tag.wait { background: var(--sky); color: var(--sky-ink); }
+.tag.run { background: var(--accent-soft); color: var(--accent-ink); }
+.tag.done { background: var(--sage); color: var(--sage-ink); }
+.tag.err { background: var(--bad); color: var(--bad-ink); }
+.meter { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 10px 0 6px; }
+.meter > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.meta { color: var(--muted); font-size: 14.5px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.review { margin-top: 8px; padding: 8px 12px; border-radius: 6px; background: var(--warn); color: var(--warn-ink); font-size: 15px; }
+.err-msg { margin-top: 8px; padding: 8px 12px; border-radius: 6px; background: var(--bad); color: var(--bad-ink); font-size: 15px; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.actions a { text-decoration: none; }
+details { margin-top: 12px; }
+summary { cursor: pointer; color: var(--accent-ink); font-weight: 700; }
+textarea {
+  width: 100%; min-height: 200px; margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--paper); color: var(--ink); font-family: var(--font-zh), var(--font-vi); font-size: 16px; line-height: 1.7;
+}
+.note { color: var(--muted); font-size: 15px; border-top: 1px solid var(--line); padding-top: 16px; }
+.note p { margin: 0 0 6px; }
+#status { color: var(--muted); font-size: 15px; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (max-width: 480px) { header h1 { font-size: 26px; } .seal { width: 50px; height: 50px; font-size: 32px; } }
+</style>
+
+<main>
+  <header>
+    <div class="seal" aria-hidden="true">识</div>
+    <div>
+      <h1>TNOCR</h1>
+      <p>Biến ảnh và PDF scan thành PDF tìm kiếm được: chữ Hán, chữ Việt, chữ Anh.</p>
+    </div>
+  </header>
+
+  <div class="privacy">Mọi việc nhận dạng chạy ngay trong trình duyệt của cô. Tệp ảnh và PDF không được gửi đi đâu cả.</div>
+
+  <section>
+    <h2>1. Chọn tệp</h2>
+    <label class="drop" id="drop">
+      <input type="file" id="picker" multiple accept="application/pdf,image/*,.pdf,.jpg,.jpeg,.png,.tif,.tiff,.bmp,.webp">
+      <strong>Bấm để chọn, hoặc kéo thả vào đây</strong>
+      <span>PDF scan, ảnh chụp (JPG, PNG, TIFF, WEBP). Chọn được nhiều tệp một lúc.</span>
+    </label>
+  </section>
+
+  <section>
+    <h2>2. Ngôn ngữ và chế độ</h2>
+    <div class="opts">
+      <div>
+        <div class="chips" role="group" aria-label="Ngôn ngữ trong tài liệu">
+          <span class="chip"><input type="checkbox" id="l-chi_sim" value="chi_sim" checked><label for="l-chi_sim" class="zh">简体 Hán giản thể</label></span>
+          <span class="chip"><input type="checkbox" id="l-chi_tra" value="chi_tra"><label for="l-chi_tra" class="zh">繁體 Hán phồn thể</label></span>
+          <span class="chip"><input type="checkbox" id="l-vie" value="vie" checked><label for="l-vie">Tiếng Việt</label></span>
+          <span class="chip"><input type="checkbox" id="l-eng" value="eng" checked><label for="l-eng">Tiếng Anh</label></span>
+        </div>
+        <p class="note" style="border:0;padding:8px 0 0;margin:0">Chỉ chọn những thứ có trong tài liệu. Chọn ít ngôn ngữ thì nhanh hơn và ít nhầm hơn. Đừng chọn cả giản thể lẫn phồn thể.</p>
+      </div>
+      <div>
+        <label class="check"><input type="checkbox" id="enhance"><span>Bản mờ, cũ, ố vàng: làm nét trước khi nhận dạng<small>Chậm hơn một chút. PDF kết quả dùng ảnh đã làm nét.</small></span></label>
+        <label class="check" style="align-items:center"><span>Độ phân giải trang PDF:</span>
+          <select id="dpi"><option value="200" selected>Chuẩn (200 dpi, nhanh)</option><option value="250">Khá (250 dpi)</option><option value="300">Cao (300 dpi, chậm, tốn bộ nhớ)</option></select>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="bar">
+      <button id="go" disabled>Bắt đầu OCR</button>
+      <button id="stop" class="ghost" hidden>Dừng</button>
+      <button id="clear" class="ghost" disabled>Xoá danh sách</button>
+      <span id="status" role="status"></span>
+    </div>
+  </section>
+
+  <section id="results" hidden>
+    <h2>3. Kết quả</h2>
+    <ul class="files" id="files"></ul>
+  </section>
+
+  <section class="note">
+    <p>Lần đầu bấm OCR, trang tải dữ liệu nhận dạng khoảng 8 MB rồi nhớ lại cho các lần sau.</p>
+    <p>Chữ Nôm chưa được hỗ trợ ở bản web này. Tài liệu cổ, chữ viết tay, bản quá mờ vẫn cần đọc soát lại, nhất là tên riêng và số liệu.</p>
+    <p>PDF dài trên khoảng 40 trang nên chia nhỏ, vì trình duyệt phải giữ cả tệp trong bộ nhớ.</p>
+  </section>
+</main>
+
+<script src="vendor/tesseract.min.js"></script>
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/pdf-lib.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var BASE = new URL(".", document.baseURI).href;
+  var $ = function (s) { return document.querySelector(s); };
+  var items = [];
+  var running = false, cancelled = false;
+  var worker = null, workerLangs = "", curProgress = null;
+  var downloads = null;
+  var uid = 0;
+
+  if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = BASE + "vendor/pdf.worker.min.js"; }
+
+  // Khả năng lưu tệp trong khung xem của claude.ai (nếu có)
+  try {
+    if (window.claude && window.claude.use) {
+      window.claude.use("downloads").then(function (d) { downloads = d || null; }, function () { downloads = null; });
+    }
+  } catch (e) { downloads = null; }
+
+  function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+  function fmtTime(ms) { var s = Math.round(ms / 1000); return s < 60 ? s + " giây" : Math.floor(s / 60) + " phút " + (s % 60) + " giây"; }
+  function stem(n) { return n.replace(/\.[^.]+$/, ""); }
+  function isPdf(f) { return f.type === "application/pdf" || /\.pdf$/i.test(f.name); }
+  function isImg(f) { return /^image\//.test(f.type) || /\.(jpe?g|png|tiff?|bmp|webp)$/i.test(f.name); }
+  function setStatus(t) { $("#status").textContent = t || ""; }
+  function langs() {
+    var order = ["chi_sim", "chi_tra", "vie", "eng"], out = [];
+    order.forEach(function (c) { if ($("#l-" + c).checked) out.push(c); });
+    return out;
+  }
+
+  // ---------- danh sách tệp ----------
+  function addFiles(list) {
+    Array.prototype.forEach.call(list, function (f) {
+      if (!(isPdf(f) || isImg(f))) return;
+      items.push({ id: ++uid, file: f, state: "wait", pages: 0, done: 0, confs: [], text: "", blob: null, err: "", took: 0 });
+    });
+    render();
+  }
+  function render() {
+    $("#results").hidden = items.length === 0;
+    $("#go").disabled = running || items.every(function (it) { return it.state === "done"; }) || items.length === 0;
+    $("#clear").disabled = running || items.length === 0;
+    var ul = $("#files");
+    ul.innerHTML = "";
+    items.forEach(function (it) {
+      var li = document.createElement("li");
+      li.className = "file";
+      li.dataset.id = it.id;
+      var tag = { wait: ["wait", "Đang chờ"], run: ["run", "Đang xử lý"], done: ["done", "Xong"], err: ["err", "Lỗi"] }[it.state];
+      var pct = it.pages ? Math.round(100 * it.done / it.pages) : 0;
+      var avg = it.confs.length ? Math.round(it.confs.reduce(function (a, b) { return a + b; }, 0) / it.confs.length) : null;
+      var low = it.confs.map(function (c, i) { return c < 70 ? i + 1 : 0; }).filter(Boolean);
+      var html = '<div class="file-top"><span class="fname">' + esc(it.file.name) + '</span><span class="tag ' + tag[0] + '">' + tag[1] + "</span></div>";
+      if (it.state === "run" || it.state === "done") {
+        html += '<div class="meter"><i style="width:' + (it.state === "done" ? 100 : pct) + '%"></i></div>';
+        html += '<div class="meta"><span>' + it.done + "/" + (it.pages || "?") + " trang</span>" +
+          (avg !== null ? "<span>Độ tin cậy trung bình " + avg + "%</span>" : "") +
+          (it.state === "done" ? "<span>Mất " + fmtTime(it.took) + "</span>" : "") + "</div>";
+      }
+      if (it.state === "done" && low.length) {
+        html += '<div class="review">Nên đọc soát kỹ trang: ' + low.slice(0, 20).join(", ") + (low.length > 20 ? "..." : "") + " (độ tin cậy dưới 70%).</div>";
+      }
+      if (it.state === "err") html += '<div class="err-msg">' + esc(it.err) + "</div>";
+      if (it.state === "done") {
+        html += '<div class="actions"><button data-act="pdf">Lưu PDF tìm kiếm được</button><button class="ghost" data-act="txt">Lưu văn bản .txt</button><button class="ghost" data-act="copy">Sao chép văn bản</button></div>';
+        html += '<details><summary>Xem văn bản đã nhận dạng</summary><textarea readonly spellcheck="false"></textarea></details>';
+      }
+      li.innerHTML = html;
+      var ta = li.querySelector("textarea");
+      if (ta) ta.value = it.text;
+      ul.appendChild(li);
+    });
+  }
+  $("#files").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-act]");
+    if (!b) return;
+    var it = items.filter(function (x) { return x.id === +b.closest("li").dataset.id; })[0];
+    if (!it) return;
+    var act = b.dataset.act;
+    if (act === "pdf") saveFile(it.blob, stem(it.file.name) + "_ocr.pdf");
+    if (act === "txt") saveFile(new Blob([it.text], { type: "text/plain" }), stem(it.file.name) + "_ocr.txt");
+    if (act === "copy") {
+      var done = function () { setStatus("Đã sao chép văn bản."); };
+      var fail = function () { var ta = b.closest("li").querySelector("textarea"); b.closest("li").querySelector("details").open = true; ta.focus(); ta.select(); setStatus("Hãy nhấn Cmd/Ctrl + C để sao chép phần đã chọn."); };
+      try { navigator.clipboard.writeText(it.text).then(done, fail); } catch (e2) { fail(); }
+    }
+  });
+  function saveFile(blob, name) {
+    if (!blob) return;
+    if (downloads) {
+      downloads.save({ filename: name, data: blob }).then(function () { setStatus("Đã lưu " + name); }, function (e) {
+        if (e && e.code === "declined") setStatus("Cô đã huỷ việc lưu tệp.");
+        else setStatus("Không lưu được tệp trong khung xem này (" + ((e && e.code) || "lỗi") + ").");
+      });
+    } else {
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    }
+  }
+
+  // ---------- chọn tệp ----------
+  $("#picker").addEventListener("change", function (e) { addFiles(e.target.files); e.target.value = ""; });
+  var drop = $("#drop");
+  ["dragenter", "dragover"].forEach(function (n) { drop.addEventListener(n, function (e) { e.preventDefault(); drop.classList.add("over"); }); });
+  ["dragleave", "drop"].forEach(function (n) { drop.addEventListener(n, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
+  drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
+  $("#clear").addEventListener("click", function () { items = []; setStatus(""); render(); });
+  $("#stop").addEventListener("click", function () {
+    cancelled = true; setStatus("Đang dừng...");
+    if (worker) { try { worker.terminate(); } catch (e) {} worker = null; workerLangs = ""; }
+  });
+  $("#go").addEventListener("click", run);
+
+  // ---------- làm nét ảnh ----------
+  function enhance(canvas) {
+    var w = canvas.width, h = canvas.height, ctx = canvas.getContext("2d");
+    var img = ctx.getImageData(0, 0, w, h), px = img.data, n = w * h;
+    var g = new Uint8ClampedArray(n);
+    for (var i = 0, j = 0; i < n; i++, j += 4) g[i] = (px[j] * 299 + px[j + 1] * 587 + px[j + 2] * 114) / 1000;
+    // Ước lượng nền: thu nhỏ, loại nét chữ bằng đóng hình thái, phóng to lại
+    var f = 8, sw = Math.max(1, Math.round(w / f)), sh = Math.max(1, Math.round(h / f));
+    var small = document.createElement("canvas"); small.width = sw; small.height = sh;
+    var sctx = small.getContext("2d");
+    var gc = document.createElement("canvas"); gc.width = w; gc.height = h;
+    var gctx = gc.getContext("2d"), gi = gctx.createImageData(w, h);
+    for (i = 0, j = 0; i < n; i++, j += 4) { gi.data[j] = gi.data[j + 1] = gi.data[j + 2] = g[i]; gi.data[j + 3] = 255; }
+    gctx.putImageData(gi, 0, 0);
+    sctx.imageSmoothingQuality = "high"; sctx.drawImage(gc, 0, 0, sw, sh);
+    var sd = sctx.getImageData(0, 0, sw, sh), s = new Uint8ClampedArray(sw * sh);
+    for (i = 0; i < sw * sh; i++) s[i] = sd.data[i * 4];
+    function pass(src, W, H, r, isMax) {
+      var tmp = new Uint8ClampedArray(W * H), out = new Uint8ClampedArray(W * H), x, y, k, v, t;
+      for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+        v = isMax ? 0 : 255;
+        for (k = Math.max(0, x - r); k <= Math.min(W - 1, x + r); k++) { t = src[y * W + k]; v = isMax ? (t > v ? t : v) : (t < v ? t : v); }
+        tmp[y * W + x] = v;
+      }
+      for (x = 0; x < W; x++) for (y = 0; y < H; y++) {
+        v = isMax ? 0 : 255;
+        for (k = Math.max(0, y - r); k <= Math.min(H - 1, y + r); k++) { t = tmp[k * W + x]; v = isMax ? (t > v ? t : v) : (t < v ? t : v); }
+        out[y * W + x] = v;
+      }
+      return out;
+    }
+    s = pass(pass(s, sw, sh, 4, true), sw, sh, 4, false);
+    var sd2 = sctx.createImageData(sw, sh);
+    for (i = 0; i < sw * sh; i++) { sd2.data[i * 4] = sd2.data[i * 4 + 1] = sd2.data[i * 4 + 2] = s[i]; sd2.data[i * 4 + 3] = 255; }
+    sctx.putImageData(sd2, 0, 0);
+    gctx.imageSmoothingQuality = "high"; gctx.clearRect(0, 0, w, h); gctx.drawImage(small, 0, 0, w, h);
+    var bg = gctx.getImageData(0, 0, w, h).data;
+    // Lọc nhiễu hạt (làm mờ Gauss 3x3), chia cho nền, rồi đẩy nền về trắng hẳn
+    var gb = new Uint8ClampedArray(n), x, y, p0;
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      p0 = y * w + x;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) { gb[p0] = g[p0]; continue; }
+      gb[p0] = (g[p0 - w - 1] + 2 * g[p0 - w] + g[p0 - w + 1] + 2 * g[p0 - 1] + 4 * g[p0] + 2 * g[p0 + 1] + g[p0 + w - 1] + 2 * g[p0 + w] + g[p0 + w + 1]) / 16;
+    }
+    var hist = new Uint32Array(256), nrm = new Uint8ClampedArray(n), v2;
+    for (i = 0; i < n; i++) { var b = bg[i * 4] || 1; v2 = gb[i] * 255 / b; v2 = v2 > 255 ? 255 : v2; nrm[i] = v2; hist[v2 | 0]++; }
+    // Điểm trắng = đỉnh của nền trừ một biên độ nhiễu; điểm đen = phân vị 0,5%
+    var peak = 255, pc = 0;
+    for (i = 255; i >= 128; i--) if (hist[i] > pc) { pc = hist[i]; peak = i; }
+    var white = Math.max(150, peak - 16), black = 0, acc = 0;
+    for (i = 0; i < 256; i++) { acc += hist[i]; if (acc >= n * 0.005) { black = i; break; } }
+    if (white - black < 40) { black = 0; white = 255; }
+    var lut = new Uint8ClampedArray(256);
+    for (i = 0; i < 256; i++) { var t2 = (i - black) / (white - black); t2 = t2 < 0 ? 0 : t2 > 1 ? 1 : t2; lut[i] = 255 * Math.pow(t2, 1.2); }
+    for (i = 0, j = 0; i < n; i++, j += 4) { px[j] = px[j + 1] = px[j + 2] = lut[nrm[i]]; px[j + 3] = 255; }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // ---------- lấy trang dưới dạng canvas ----------
+  function newCanvas(w, h) { var c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+  function fitScale(w, h, maxPx) { var px = w * h; return px > maxPx ? Math.sqrt(maxPx / px) : 1; }
+
+  async function openSource(it, dpi) {
+    if (isPdf(it.file)) {
+      if (!window.pdfjsLib) throw new Error("Không nạp được bộ đọc PDF.");
+      var buf = await it.file.arrayBuffer();
+      var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      return {
+        count: pdf.numPages,
+        page: async function (i) {
+          var p = await pdf.getPage(i);
+          var base = p.getViewport({ scale: 1 });
+          var sc = (dpi / 72) * fitScale(base.width * dpi / 72, base.height * dpi / 72, 16e6);
+          var vp = p.getViewport({ scale: sc });
+          var c = newCanvas(Math.round(vp.width), Math.round(vp.height));
+          var cx = c.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, c.width, c.height);
+          await p.render({ canvasContext: cx, viewport: vp }).promise;
+          p.cleanup();
+          return { canvas: c, dpi: Math.round(sc * 72) };
+        },
+        close: function () { try { pdf.destroy(); } catch (e) {} }
+      };
+    }
+    var bmp = await createImageBitmap(it.file, { imageOrientation: "from-image" });
+    return {
+      count: 1,
+      page: async function () {
+        var f = bmp.width < 1600 && bmp.height < 1600 ? 2 : 1;
+        f *= fitScale(bmp.width * f, bmp.height * f, 16e6);
+        var c = newCanvas(Math.round(bmp.width * f), Math.round(bmp.height * f));
+        var cx = c.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, c.width, c.height);
+        cx.imageSmoothingQuality = "high"; cx.drawImage(bmp, 0, 0, c.width, c.height);
+        return { canvas: c, dpi: 300 };
+      },
+      close: function () { try { bmp.close(); } catch (e) {} }
+    };
+  }
+
+  // ---------- bỏ khoảng trắng giữa các chữ Hán ----------
+  function isCjk(u) {
+    return (u >= 0x2E80 && u <= 0x9FFF) || (u >= 0xF900 && u <= 0xFAFF) || (u >= 0xFF00 && u <= 0xFFEF) || (u >= 0xD840 && u <= 0xD8BF);
+  }
+  function fixText(t) {
+    return t.replace(/([\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF\u3000-\u303F])[ \t]+(?=[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF\u3000-\u303F])/g, "$1");
+  }
+  // Lớp chữ ẩn của Tesseract thêm dấu cách sau mỗi từ; giữa hai chữ Hán cùng dòng thì bỏ đi để tìm "汉语" ra được.
+  function fixCjkLayer(doc) {
+    try {
+      var page = doc.getPage(0), ctx = doc.context, N = PDFLib.PDFName.of("Contents");
+      var raw = ctx.lookup(page.node.get(N));
+      var bytes = PDFLib.decodePDFRawStream(raw).decode();
+      var str = "", i;
+      for (i = 0; i < bytes.length; i += 8192) str += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+      var re = /<([0-9A-Fa-f]+)>\s*\]\s*TJ/g, m, list = [];
+      while ((m = re.exec(str))) list.push({ start: m.index + 1, hex: m[1] });
+      var changed = false;
+      for (i = 0; i < list.length - 1; i++) {
+        var cur = list[i], nxt = list[i + 1];
+        if (cur.hex.length < 8 || cur.hex.length % 4 || cur.hex.slice(-4) !== "0020") continue;
+        var between = str.slice(cur.start + cur.hex.length, nxt.start), td = /(-?[\d.]+)\s+(-?[\d.]+)\s+Td/.exec(between);
+        if (td && parseFloat(td[2]) !== 0) continue; // xuống dòng: giữ nguyên
+        if (isCjk(parseInt(cur.hex.slice(-8, -4), 16)) && isCjk(parseInt(nxt.hex.slice(0, 4), 16))) { cur.cut = true; changed = true; }
+      }
+      if (!changed) return;
+      for (i = list.length - 1; i >= 0; i--) {
+        if (list[i].cut) str = str.slice(0, list[i].start + list[i].hex.length - 4) + str.slice(list[i].start + list[i].hex.length);
+      }
+      var out = new Uint8Array(str.length);
+      for (i = 0; i < str.length; i++) out[i] = str.charCodeAt(i) & 255;
+      page.node.set(N, ctx.register(ctx.flateStream(out)));
+    } catch (e) { /* giữ nguyên lớp chữ gốc */ }
+  }
+
+  // ---------- Tesseract ----------
+  async function getWorker(codes) {
+    var key = codes.join("+");
+    if (worker && workerLangs === key) return worker;
+    if (worker) { try { await worker.terminate(); } catch (e) {} worker = null; }
+    setStatus("Đang nạp dữ liệu nhận dạng (lần đầu có thể mất vài chục giây)...");
+    worker = await Tesseract.createWorker(codes, 1, {
+      workerPath: BASE + "vendor/worker.min.js",
+      corePath: BASE + "core/",
+      langPath: BASE + "lang",
+      gzip: true,
+      logger: function (m) { if (curProgress && m.status === "recognizing text") curProgress(m.progress); }
+    });
+    workerLangs = key;
+    return worker;
+  }
+
+  async function run() {
+    var codes = langs();
+    if (!codes.length) { setStatus("Hãy chọn ít nhất một ngôn ngữ."); return; }
+    if (running) return;
+    running = true; cancelled = false;
+    $("#go").hidden = true; $("#stop").hidden = false; $("#clear").disabled = true;
+    var dpi = +$("#dpi").value, doEnh = $("#enhance").checked;
+    try {
+      var w = await getWorker(codes);
+      for (var k = 0; k < items.length && !cancelled; k++) {
+        var it = items[k];
+        if (it.state === "done") continue;
+        it.state = "run"; it.done = 0; it.pages = 0; it.confs = []; it.text = ""; it.blob = null; it.err = "";
+        var t0 = Date.now(), src = null;
+        render();
+        try {
+          src = await openSource(it, dpi);
+          it.pages = src.count;
+          var out = await PDFLib.PDFDocument.create(), texts = [];
+          for (var i = 1; i <= src.count && !cancelled; i++) {
+            setStatus("Đang xử lý " + it.file.name + ", trang " + i + "/" + src.count);
+            var pg = await src.page(i);
+            if (doEnh) enhance(pg.canvas);
+            await w.setParameters({ user_defined_dpi: String(pg.dpi) });
+            var before = it.done;
+            curProgress = function (p) {
+              var li = document.querySelector('li[data-id="' + it.id + '"] .meter > i');
+              if (li) li.style.width = Math.round(100 * (before + p) / it.pages) + "%";
+            };
+            var r = await w.recognize(pg.canvas, {}, { pdf: true, text: true });
+            curProgress = null;
+            pg.canvas.width = pg.canvas.height = 0;
+            var pdfPage = await PDFLib.PDFDocument.load(new Uint8Array(r.data.pdf));
+            fixCjkLayer(pdfPage);
+            var copied = await out.copyPages(pdfPage, [0]);
+            out.addPage(copied[0]);
+            texts.push((src.count > 1 ? "===== Trang " + i + " =====\n" : "") + fixText((r.data.text || "").trim()));
+            it.confs.push(Math.round(r.data.confidence || 0));
+            it.done = i;
+            render();
+          }
+          if (cancelled) { it.state = "wait"; it.done = 0; render(); break; }
+          var bytes = await out.save();
+          it.blob = new Blob([bytes], { type: "application/pdf" });
+          it.text = texts.join("\n\n");
+          it.took = Date.now() - t0;
+          it.state = "done";
+        } catch (e) {
+          if (cancelled) { it.state = "wait"; it.done = 0; }
+          else { it.state = "err"; it.err = "Không xử lý được tệp này: " + (e && e.message ? e.message : e); }
+        } finally {
+          if (src) src.close();
+          curProgress = null;
+        }
+        render();
+      }
+    } catch (e) {
+      setStatus("Lỗi: " + (e && e.message ? e.message : e));
+      items.forEach(function (it) { if (it.state === "run") { it.state = "err"; it.err = "Không nạp được dữ liệu nhận dạng: " + (e && e.message ? e.message : e); } });
+    }
+    running = false;
+    $("#go").hidden = false; $("#stop").hidden = true;
+    if (cancelled) setStatus("Đã dừng.");
+    else if (items.length && items.every(function (it) { return it.state === "done"; })) setStatus("Hoàn tất.");
+    else if (!$("#status").textContent.startsWith("Lỗi")) setStatus("");
+    render();
+  }
+  render();
+})();
+</script>
+
+</body></html>
