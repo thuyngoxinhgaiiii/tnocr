@@ -184,9 +184,9 @@ textarea {
   </section>
 </main>
 
-<script src="vendor/tesseract.min.js"></script>
-<script src="vendor/pdf.min.js"></script>
-<script src="vendor/pdf-lib.min.js"></script>
+<script src="tesseract.min.js"></script>
+<script src="pdf.min.js"></script>
+<script src="pdf-lib.min.js"></script>
 <script>
 (function () {
   "use strict";
@@ -198,7 +198,7 @@ textarea {
   var downloads = null;
   var uid = 0;
 
-  if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = BASE + "vendor/pdf.worker.min.js"; }
+  if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = BASE + "pdf.worker.min.js"; }
 
   // Khả năng lưu tệp trong khung xem của claude.ai (nếu có)
   try {
@@ -443,9 +443,9 @@ textarea {
     if (worker) { try { await worker.terminate(); } catch (e) {} worker = null; }
     setStatus("Đang nạp dữ liệu nhận dạng (lần đầu có thể mất vài chục giây)...");
     worker = await Tesseract.createWorker(codes, 1, {
-      workerPath: BASE + "vendor/worker.min.js",
-      corePath: BASE + "core/",
-      langPath: BASE + "lang",
+      workerPath: BASE + "worker.min.js",
+      corePath: BASE,
+      langPath: BASE,
       gzip: true,
       logger: function (m) { if (curProgress && m.status === "recognizing text") curProgress(m.progress); }
     });
