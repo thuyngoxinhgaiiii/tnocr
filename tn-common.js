@@ -70,6 +70,40 @@
     e.setUint32(12, csize, true); e.setUint32(16, offset, true);
     return new Blob(parts.concat(central, [e.buffer]), { type: mime || "application/zip" });
   };
+
+  /* ---- trang -> canvas, canvas -> PDF (dùng cho các tab xử lý ảnh) ---- */
+  TN.blob = function (c, type, q) { return new Promise(function (r) { c.toBlob(r, type, q); }); };
+  TN.isPdf = function (f) { return /\.pdf$/i.test(f.name) || f.type === "application/pdf"; };
+  TN.isImg = function (f) { return /^image\//.test(f.type) || /\.(jpe?g|png|webp|bmp|gif|tiff?)$/i.test(f.name); };
+  // gọi fn(canvas, số trang, tổng) cho từng trang; ảnh thường coi là 1 trang. maxPages để xem thử.
+  TN.eachPage = async function (file, dpi, fn, maxPages) {
+    if (TN.isPdf(file)) {
+      var pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise, n = Math.min(pdf.numPages, maxPages || 1e9);
+      for (var i = 1; i <= n; i++) {
+        var pg = await pdf.getPage(i), v = pg.getViewport({ scale: dpi / 72 }), c = document.createElement("canvas");
+        c.width = Math.ceil(v.width); c.height = Math.ceil(v.height);
+        var g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+        await pg.render({ canvasContext: g, viewport: v }).promise; pg.cleanup();
+        if ((await fn(c, i, pdf.numPages)) === false) break;
+      }
+      pdf.destroy && pdf.destroy();
+    } else {
+      var bmp = await createImageBitmap(file, { imageOrientation: "from-image" }), w = bmp.width, h = bmp.height, k = Math.min(1, Math.sqrt(24e6 / (w * h)));
+      var c2 = document.createElement("canvas"); c2.width = Math.round(w * k); c2.height = Math.round(h * k);
+      var g2 = c2.getContext("2d"); g2.fillStyle = "#fff"; g2.fillRect(0, 0, c2.width, c2.height); g2.drawImage(bmp, 0, 0, c2.width, c2.height); bmp.close && bmp.close();
+      await fn(c2, 1, 1);
+    }
+  };
+  TN.pdfFromImages = async function (list) { // list: [{blob, png:boolean, wPt, hPt}]
+    var doc = await PDFLib.PDFDocument.create();
+    for (var i = 0; i < list.length; i++) {
+      var it = list[i], bytes = new Uint8Array(await it.blob.arrayBuffer());
+      var im = it.png ? await doc.embedPng(bytes) : await doc.embedJpg(bytes), pg = doc.addPage([it.wPt, it.hPt]);
+      pg.drawImage(im, { x: 0, y: 0, width: it.wPt, height: it.hPt });
+    }
+    return new Blob([await doc.save({ useObjectStreams: true })], { type: "application/pdf" });
+  };
+  TN.tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
   var css = document.createElement("style");
   css.textContent =
     ".rowfile{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}" +

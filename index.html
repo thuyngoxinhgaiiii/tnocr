@@ -140,6 +140,10 @@ textarea {
     <button type="button" data-tab="pdf" aria-pressed="false">Gộp / tách PDF</button>
     <button type="button" data-tab="nen" aria-pressed="false">Nén PDF</button>
     <button type="button" data-tab="word" aria-pressed="false">Word ↔ PDF</button>
+    <button type="button" data-tab="lamnet" aria-pressed="false">Làm nét scan</button>
+    <button type="button" data-tab="wm" aria-pressed="false">Xoá watermark</button>
+    <button type="button" data-tab="bg" aria-pressed="false">Tách nền ảnh</button>
+    <button type="button" data-tab="anh" aria-pressed="false">Đổi định dạng / nén ảnh</button>
     <button type="button" data-tab="video" aria-pressed="false">Nén video</button>
   </nav>
 
@@ -200,6 +204,10 @@ textarea {
   <div id="tab-pdf" class="tabpanel" hidden></div>
   <div id="tab-nen" class="tabpanel" hidden></div>
   <div id="tab-word" class="tabpanel" hidden></div>
+  <div id="tab-lamnet" class="tabpanel" hidden></div>
+  <div id="tab-wm" class="tabpanel" hidden></div>
+  <div id="tab-bg" class="tabpanel" hidden></div>
+  <div id="tab-anh" class="tabpanel" hidden></div>
   <div id="tab-video" class="tabpanel" hidden></div>
 </main>
 
@@ -548,10 +556,11 @@ textarea {
 <script>
 (function () {
   /* Mỗi tab chỉ tải mã của nó khi cô bấm vào lần đầu, nên trang mở lên nhanh. */
-  var MODS = { pdf: ["tachgop.js"], nen: ["nenpdf.js"], word: ["word.js"], video: ["video.js"] };
+  var MODS = { pdf: ["tachgop.js"], nen: ["nenpdf.js"], word: ["word.js"], video: ["video.js"], anh: ["anh.js"], lamnet: ["imgproc.js", "lamnet.js"], wm: ["imgproc.js", "watermark.js"], bg: ["imgproc.js", "nenanh.js"] };
   var btns = document.querySelectorAll("#tabs button"), loaded = {}, common = null;
+  var cache = {};
   function add(src) {
-    return new Promise(function (ok, bad) {
+    return cache[src] = cache[src] || new Promise(function (ok, bad) {
       var s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); };
       document.head.appendChild(s);
     });
