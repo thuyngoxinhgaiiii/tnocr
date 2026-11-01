@@ -1,0 +1,7 @@
+CẬP NHẬT TNOCR TRÊN GITHUB (làm một lần)
+1. Giải nén tệp zip này.
+2. Vào github.com/thuyngoxinhgaiiii/tnocr -> Add file -> Upload files.
+3. Mở thư mục TNOCR_web, bấm Cmd+A chọn TẤT CẢ tệp bên trong (30 tệp), kéo thả vào trang GitHub (không kéo cả thư mục).
+   Chờ tải xong (có các tệp 10 MB nên cần vài phút), rồi bấm Commit changes.
+   Nếu GitHub báo vượt giới hạn, tải làm hai lần: lần 1 các tệp nhỏ, lần 2 các tệp lớn (ffmpeg-core.wasm.bin, ort-wasm-simd-threaded.wasm).
+4. Đợi 1-2 phút, mở https://thuyngoxinhgaiiii.github.io/tnocr/ và tải lại bằng Cmd+Shift+R.
